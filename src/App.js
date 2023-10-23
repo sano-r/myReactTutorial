@@ -9,14 +9,9 @@ function Square({ value, onSquareClick }) { // ここで渡されているのが
 }
 
 
-export default function Board() {
-  const [squares, setSquares] = useState(Array(9).fill(null)); // squaresはNullが9個詰まった配列
-  const [xIsNext, setXIsNext] = useState(true);
-
+function Board({ xIsNext, squares, onPlay }) {
   function handleClick(i) {
-    // squares[i]に値が入っていればTrueで早期リターン
-    if (squares[i]) { return; }
-    // 勝者の判定、どっちかが勝ったら関数を抜ける
+    // 勝者の判定、どっちかが勝ったら関数を抜ける、値が既に入力されていれば早期リターン
     if (squares[i] || calculateWinner(squares)) {
       return;
     }
@@ -26,19 +21,13 @@ export default function Board() {
     const nextSquares = squares.slice();
     // trueの時はX,Falseの時はOが入力される
     xIsNext ? nextSquares[i] = "X" : nextSquares[i] = "O";
-    setSquares(nextSquares);
-    // クリックのたびにtrue/falseが切り替わる
-    setXIsNext(!xIsNext);
+    onPlay(nextSquares);
   }
 
   // ゲームの終了・続行を知らせるコメントを表示
   const winner = calculateWinner(squares);
   let status;
-  if (winner) {
-    status = `Winner: ${winner}`;
-  }else{
-    status = `Next player: ${xIsNext ? "X" : "O"}`;
-  }
+  winner ? status = `Winner: ${winner}` : status = `Next player: ${xIsNext ? "X" : "O"}`;
 
   // handleClickに対して引数を渡して実行したいが、JSX内で{handleClick(0)}と書くとレンダリングした時点で実行する関数になってしまう。
   // したがって、無名関数を定義→その中でhandleClick(0)を呼ぶ、という書き方にしてあげる必要がある。
@@ -61,6 +50,46 @@ export default function Board() {
         <Square value={squares[8]} onSquareClick={() => handleClick(8)} />
       </div>
     </>
+  );
+}
+
+// タイムトラベルの実装
+export default function Game(){
+  const [history, setHistory] = useState([Array(9).fill(null)]);
+  const [currentMove, setCurrentMove] = useState(0);
+  const xIsNext = currentMove % 2 === 0;
+  const currentSquares = history[currentMove];
+
+  function handlePlay(nextSquares){
+    const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
+    setHistory(nextHistory);
+    setCurrentMove(nextHistory.length - 1);
+  }
+
+  // 過去の操作を表示する
+  function jumpTo(nextMove){
+    setCurrentMove(nextMove);
+  }
+
+  const moves = history.map((squares, move) => {
+    let description;
+    move > 0 ? description = `Go to move # ${move}` : description = `Go to game start`;
+    return (
+      <li key={move}>
+        <button onClick={() => jumpTo(move)}>{description}</button>
+      </li>
+    );
+  });
+
+  return (
+    <div className='game'>
+      <div className='game-board'>
+        <Board xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay}/>
+      </div>
+      <div className='game-info'>
+        <ol>{moves}</ol>
+      </div>
+    </div>
   );
 }
 
